@@ -19,7 +19,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
         <Route path="/specific-quiz/:quizId" element={<QuizDetails/>} />
-        <Route path="/view-score" element={<ViewScores />} />
       </Routes>
     </>
   )

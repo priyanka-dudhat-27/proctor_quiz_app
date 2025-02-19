@@ -50,7 +50,6 @@ const QuizDetails = () => {
       console.error("Error submitting quiz:", error);
     }
   };
-  
 
   if (loading) return <p className="text-center text-gray-700">Loading quiz...</p>;
   if (!quiz) return <p className="text-center text-red-500">Quiz not found</p>;
@@ -73,8 +72,8 @@ const QuizDetails = () => {
 
       {submitted ? (
         <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-lg shadow-lg text-center z-10">
-          <h3 className="text-2xl font-semibold text-gray-700">Quiz Submitted!</h3>
-          <p className="text-lg text-gray-600 mt-2">Your Score: <span className="font-bold">{score}</span></p>
+          <h3 className="text-2xl font-semibold text-gray-700">Thank You for Submitting the Quiz!</h3>
+          <p className="text-lg text-gray-600 mt-2">Your instructor will inform you of your score.</p>
           <CustomButton text="Back to Home" onClick={() => navigate("/")} bgColor="bg-blue-500" hoverColor="hover:bg-blue-600" />
         </motion.div>
       ) : (
