@@ -145,26 +145,125 @@ const QuizDetails = () => {
 
   if (terminated) {
     return (
-      <div className="min-h-screen bg-white p-6 flex flex-col items-center">
-        <h2 className="text-3xl font-bold text-red-600 mb-8">Quiz Terminated</h2>
-        <p className="text-lg text-gray-600">You have switched tabs too many times or exited full-screen mode. The quiz has been terminated.</p>
-        <CustomButton text="Back to Home" onClick={() => navigate("/")} bgColor="bg-blue-500" hoverColor="hover:bg-blue-600" />
+      <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+        <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+          <div className="relative px-4 py-10 bg-white mx-8 md:mx-0 shadow-lg rounded-3xl sm:p-10">
+            <div className="max-w-md mx-auto">
+              <div className="text-center">
+                <div className="mb-8">
+                  <svg className="mx-auto h-16 w-16 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                
+                <h2 className="text-3xl font-bold text-red-600 mb-4">Quiz Terminated</h2>
+                
+                <div className="bg-red-50 p-4 rounded-lg mb-6">
+                  <p className="text-lg text-red-800 mb-4">
+                    Your quiz has been terminated due to one of the following reasons:
+                  </p>
+                  <ul className="text-red-700 text-left space-y-2">
+                    <li className="flex items-start">
+                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Exiting full-screen mode</span>
+                    </li>
+                    <li className="flex items-start">
+                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Switching browser tabs</span>
+                    </li>
+                    <li className="flex items-start">
+                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Receiving three warnings</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <button
+                  onClick={() => navigate("/")}
+                  className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                >
+                  Back to Home
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!started) {
     return (
-      <div className="min-h-screen bg-white p-6 flex flex-col items-center">
-        <h2 className="text-3xl font-bold text-gray-800 mb-8">Quiz Instructions</h2>
-        <p className="text-lg text-gray-600 mb-4">Please read the following instructions carefully before starting the quiz:</p>
-        <ul className="list-disc list-inside text-gray-600 mb-8">
-          <li>Ensure you are in a quiet environment with no distractions.</li>
-          <li>The quiz will be conducted in full-screen mode. Exiting full-screen mode will result in termination of the quiz.</li>
-          <li>You will receive warnings if you switch tabs or exit full-screen mode. After 3 warnings, the quiz will be terminated.</li>
-          <li>Make sure your internet connection is stable.</li>
-        </ul>
-        <CustomButton text="Start Quiz" onClick={handleStartQuiz} bgColor="bg-green-500" hoverColor="hover:bg-green-600" />
+      <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
+        <div className="relative py-3 sm:max-w-xl sm:mx-auto">
+          <div className="relative px-4 py-10 bg-white mx-8 md:mx-0 shadow-lg rounded-3xl sm:p-10">
+            <div className="max-w-md mx-auto">
+              <div className="divide-y divide-gray-200">
+                <div className="py-8 text-base leading-6 space-y-4 text-gray-700 sm:text-lg sm:leading-7">
+                  <div className="flex items-center justify-center mb-8">
+                    <h2 className="text-3xl font-bold text-indigo-600">Quiz Instructions</h2>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                    <p className="text-blue-800 font-medium mb-2">Please read carefully:</p>
+                    <ul className="list-none space-y-3">
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Ensure you are in a quiet environment with no distractions</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>The quiz will be conducted in full-screen mode</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <span>Three warnings will result in quiz termination</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Make sure your internet connection is stable</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <p className="text-yellow-800 font-medium mb-2">Important Notes:</p>
+                    <ul className="list-disc list-inside text-yellow-700 space-y-2">
+                      <li>Quiz duration: {quiz.duration} minutes</li>
+                      <li>Auto-submission when time expires</li>
+                      <li>No tab switching allowed</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="pt-6 text-base leading-6 font-bold sm:text-lg sm:leading-7">
+                  <div className="flex justify-center">
+                    <button
+                      onClick={handleStartQuiz}
+                      className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    >
+                      Start Quiz
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
