@@ -1,6 +1,4 @@
 import axios from "axios";
-import { get } from "mongoose";
-import { getAllQuizzes } from "../../../backend/controllers/quizController";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
@@ -61,13 +59,34 @@ const quizService = {
     }
   },
 
-getAllQuizzes: async () => {
-    try{
+  getAllQuizzes: async () => {
+    try {
       const response = await api.get("/quiz/all");
       return response;
     } catch (error) {
-      throw error.response?.data || "Quiz creation failed";
+      throw error.response?.data || "Failed to fetch quizzes";
     }
   },
-};    
+
+  getQuizById: async (quizId) => {
+    try {
+      const response = await api.get(`/quiz/single-quiz/${quizId}`);
+      console.log(">>>>>>>>>>>>>>>>>>>>>>id",response.data);
+
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || "Failed to fetch quiz";
+    }
+  },
+
+  submitQuiz: async (quizId, answers) => {
+    try {
+      const response = await api.post(`/quiz/submit/${quizId}`, { answers });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || "Failed to submit quiz";
+    }
+  },
+};
+
 export { authService, quizService };
