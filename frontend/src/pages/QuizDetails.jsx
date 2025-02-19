@@ -1,15 +1,18 @@
-import React, { useEffect, useState, useContext, useRef } from "react";
+import React, { useEffect, useState, useRef, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { quizService } from "../services/apiServices";
 import CustomButton from "../components/CustomButton";
 import { motion } from "framer-motion";
+import { io } from "socket.io-client";
 
 const QuizDetails = () => {
   const { quizId } = useParams();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const quizContainerRef = useRef(null);
+  const videoRef = useRef(null);
+  const socketRef = useRef(null);
 
   const [quiz, setQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -21,6 +24,22 @@ const QuizDetails = () => {
   const [terminated, setTerminated] = useState(false);
   const [started, setStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [stream, setStream] = useState(null);
+
+  useEffect(() => {
+    // Connect to WebSocket server
+    socketRef.current = io("http://localhost:5000");
+
+    // Cleanup on unmount
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const fetchQuizDetails = async () => {
@@ -116,9 +135,58 @@ const QuizDetails = () => {
     }
   };
 
-  const handleStartQuiz = () => {
-    requestFullScreen();
-    setStarted(true);
+  const startWebcam = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
+        video: { 
+          width: 320,
+          height: 240,
+          frameRate: { ideal: 10, max: 15 }
+        },
+        audio: false 
+      });
+      setStream(mediaStream);
+      
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+
+      // Start sending video frames to server
+      const canvas = document.createElement('canvas');
+      canvas.width = 320;
+      canvas.height = 240;
+      const ctx = canvas.getContext('2d');
+      
+      const sendFrame = () => {
+        if (videoRef.current && socketRef.current) {
+          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+          const frame = canvas.toDataURL('image/jpeg', 0.5);
+          socketRef.current.emit('video-frame', {
+            userId: user.id,
+            userName: user.name,
+            quizId: quizId,
+            frame
+          });
+        }
+      };
+
+      // Send frames every 1 second
+      const frameInterval = setInterval(sendFrame, 1000);
+      return () => clearInterval(frameInterval);
+    } catch (error) {
+      console.error("Error accessing webcam:", error);
+      setTerminated(true);
+    }
+  };
+
+  const handleStartQuiz = async () => {
+    try {
+      await startWebcam();
+      await requestFullScreen();
+      setStarted(true);
+    } catch (error) {
+      console.error("Error starting quiz:", error);
+    }
   };
 
   const handleOptionSelect = (questionIndex, optionIndex) => {
@@ -181,6 +249,12 @@ const QuizDetails = () => {
                       </svg>
                       <span>Receiving three warnings</span>
                     </li>
+                    <li className="flex items-start">
+                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      <span>Webcam access is required to take the quiz</span>
+                    </li>
                   </ul>
                 </div>
 
@@ -211,7 +285,9 @@ const QuizDetails = () => {
                   </div>
                   
                   <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                    <p className="text-blue-800 font-medium mb-2">Please read carefully:</p>
+                    <p className="text-lg text-blue-800 mb-4">
+                      Please read carefully:
+                    </p>
                     <ul className="list-none space-y-3">
                       <li className="flex items-start">
                         <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -236,6 +312,12 @@ const QuizDetails = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>Make sure your internet connection is stable</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Webcam access is required to take the quiz</span>
                       </li>
                     </ul>
                   </div>
@@ -333,6 +415,13 @@ const QuizDetails = () => {
           </div>
         </motion.div>
       )}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className="fixed top-4 right-4 w-[160px] h-[120px] bg-black rounded-lg overflow-hidden shadow-lg"
+      />
     </motion.div>
   );
 };

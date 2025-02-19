@@ -53,17 +53,49 @@ export const submitQuiz = async (req, res, next) => {
       return res.status(400).json({ message: "Quiz has no questions" });
     }
 
+    // Validate answers array
+    if (!Array.isArray(answers) || answers.length !== quiz.questions.length) {
+      return res.status(400).json({ 
+        message: "Invalid answers format. Number of answers must match number of questions." 
+      });
+    }
+
     let score = 0;
-    quiz.questions.forEach((question, index) => {
-      if (question.correctAnswer === answers[index]) {
-        score++;
-      }
+    const questionResults = quiz.questions.map((question, index) => {
+      const isCorrect = question.correctAnswer === answers[index];
+      if (isCorrect) score++;
+      return {
+        questionNumber: index + 1,
+        userAnswer: answers[index],
+        correctAnswer: question.correctAnswer,
+        isCorrect
+      };
     });
 
-    const attempt = new Attempt({ user: req.user.id, quiz: quiz._id, score });
+    const totalQuestions = quiz.questions.length;
+    const percentage = (score / totalQuestions) * 100;
+    const passed = percentage >= 60;
+
+    const attempt = new Attempt({ 
+      user: req.user.id, 
+      quiz: quiz._id, 
+      score,
+      totalQuestions,
+      percentage,
+      passed,
+      answers: questionResults
+    });
+    
     await attempt.save();
 
-    res.json({ message: "Quiz completed!", score });
+    res.json({ 
+      message: passed ? "Congratulations! You passed the quiz!" : "Quiz completed. Keep practicing!",
+      score,
+      totalQuestions,
+      percentage: percentage.toFixed(2),
+      passed,
+      questionResults
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
@@ -76,14 +108,21 @@ export const getAllScores = async (req, res, next) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    const attempts = await Attempt.find().populate("quiz", "title").populate("user", "name");
+    const attempts = await Attempt.find()
+      .populate("quiz", "title questions")
+      .populate("user", "name")
+      .sort({ createdAt: -1 }); // Sort by most recent first
+
     const scores = attempts.map(attempt => ({
       _id: attempt._id,
       userName: attempt.user.name,
       quizTitle: attempt.quiz.title,
       marks: attempt.score,
-      totalMarks: attempt.quiz.questions.length,
+      totalMarks: attempt.totalQuestions,
+      percentage: attempt.percentage,
+      passed: attempt.passed,
       attemptedAt: attempt.createdAt,
+      answers: attempt.answers
     }));
 
     res.json(scores);
