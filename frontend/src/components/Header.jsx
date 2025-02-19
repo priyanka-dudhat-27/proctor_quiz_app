@@ -17,7 +17,7 @@ const Header = () => {
               {user.role === "admin" && (
                 <>
                   <Link to="/create-quiz" className="hover:underline">Create Quiz</Link>
-                  <Link to="/view-scores" className="hover:underline">View Scores</Link>
+                  <Link to="/admin/scores" className="hover:underline">View Scores</Link>
                   <Link to="/proctoring" className="hover:underline">Proctoring</Link>
                 </>
               )}

@@ -16,6 +16,8 @@ const QuizDetails = () => {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [warnings, setWarnings] = useState(0);
+  const [terminated, setTerminated] = useState(false);
 
   useEffect(() => {
     const fetchQuizDetails = async () => {
@@ -31,6 +33,26 @@ const QuizDetails = () => {
 
     fetchQuizDetails();
   }, [quizId]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setWarnings((prevWarnings) => prevWarnings + 1);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (warnings >= 3) {
+      setTerminated(true);
+    }
+  }, [warnings]);
 
   const handleOptionSelect = (questionIndex, optionIndex) => {
     setAnswers({ ...answers, [questionIndex]: optionIndex });
@@ -53,6 +75,16 @@ const QuizDetails = () => {
 
   if (loading) return <p className="text-center text-gray-700">Loading quiz...</p>;
   if (!quiz) return <p className="text-center text-red-500">Quiz not found</p>;
+
+  if (terminated) {
+    return (
+      <div className="min-h-screen bg-white p-6 flex flex-col items-center">
+        <h2 className="text-3xl font-bold text-red-600 mb-8">Quiz Terminated</h2>
+        <p className="text-lg text-gray-600">You have switched tabs too many times. The quiz has been terminated.</p>
+        <CustomButton text="Back to Home" onClick={() => navigate("/")} bgColor="bg-blue-500" hoverColor="hover:bg-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-white p-6 flex flex-col items-center relative">

@@ -77,6 +77,15 @@ const quizService = {
     const response = await api.post(`/quiz/submit/${quizId}`, { ...data });
     return response.data;
   },
+
+  getAllScores: async () => {
+    try {
+      const response = await api.get("/quiz/admin/scores");
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || "Failed to fetch scores";
+    }
+  },
 };
 
 export { authService, quizService };
