@@ -20,12 +20,15 @@ const QuizDetails = () => {
   const [warnings, setWarnings] = useState(0);
   const [terminated, setTerminated] = useState(false);
   const [started, setStarted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     const fetchQuizDetails = async () => {
       try {
         const response = await quizService.getQuizById(quizId);
         setQuiz(response);
+        const durationInSeconds = response.duration ? response.duration * 60 : 120; // Set default to 2 minutes (120 seconds)
+        setTimeLeft(durationInSeconds);
         setLoading(false);
       } catch (error) {
         console.error("Error fetching quiz details:", error);
@@ -70,6 +73,33 @@ const QuizDetails = () => {
     };
   }, []);
 
+  useEffect(() => {
+    let timer;
+    if (started && timeLeft > 0 && !submitted) {
+      timer = setInterval(() => {
+        setTimeLeft((prevTime) => {
+          if (prevTime <= 1) {
+            clearInterval(timer);
+            handleSubmitQuiz();
+            return 0;
+          }
+          return prevTime - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [started, timeLeft, submitted]);
+
+  const formatTime = (seconds) => {
+    if (!seconds && seconds !== 0) return "--:--";
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   const requestFullScreen = () => {
     if (quizContainerRef.current) {
       if (quizContainerRef.current.requestFullscreen) {
@@ -85,7 +115,6 @@ const QuizDetails = () => {
       console.error("quizContainerRef is null. Fullscreen mode cannot be activated.");
     }
   };
-  
 
   const handleStartQuiz = () => {
     requestFullScreen();
@@ -160,6 +189,14 @@ const QuizDetails = () => {
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 w-full max-w-2xl">
           <p className="font-bold">Warning</p>
           <p>You have switched tabs or exited full-screen mode. This is warning {warnings} of 3.</p>
+        </div>
+      )}
+
+      {started && (
+        <div className="mb-4 text-right">
+          <span className={`font-bold text-lg ${timeLeft <= 10 ? 'text-red-600 animate-pulse' : ''}`}>
+            Time Left: {formatTime(timeLeft)}
+          </span>
         </div>
       )}
 
