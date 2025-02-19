@@ -39,17 +39,28 @@ export const getQuizById = async (req, res) => {
   }
 };
 
-export const submitQuiz = async (req, res) => {
-  const { quizId, answers } = req.body;
-  const quiz = await Quiz.findById(quizId);
+export const submitQuiz = async (req, res, next) => {
+  const { id } = req.params;
+  const { answers } = req.body;
 
-  let score = 0;
-  quiz.questions.forEach((q, i) => {
-    if (q.correctAnswer === answers[i]) score++;
-  });
+  try {
+    const quiz = await Quiz.findById(id);
+    if (!quiz) {
+      return res.status(404).json({ message: "Quiz not found" });
+    }
 
-  const attempt = new Attempt({ user: req.user.id, quiz: quizId, score });
-  await attempt.save();
+    let score = 0;
+    quiz.questions.forEach((question, index) => {
+      if (question.correctAnswer === answers[index]) {
+        score++;
+      }
+    });
 
-  res.json({ message: "Quiz completed!", score });
+    const attempt = new Attempt({ user: req.user.id, quiz: quiz._id, score });
+    await attempt.save();
+
+    res.json({ message: "Quiz completed!", score });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };

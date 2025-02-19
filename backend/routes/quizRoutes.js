@@ -10,6 +10,6 @@ router.get("/single-quiz/:id", protect, getQuizById);
 
 router.get("/all", protect, getAllQuizzes);
 
-router.post("/submit", protect, submitQuiz);
+router.post("/submit/:id", protect, submitQuiz);
 
 export default router;

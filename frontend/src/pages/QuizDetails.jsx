@@ -41,15 +41,16 @@ const QuizDetails = () => {
       navigate("/login");
       return;
     }
-
     try {
-      const response = await quizService.submitQuiz(quizId, { answers });
+      const formattedAnswers = Object.values(answers); // Convert object to array
+      const response = await quizService.submitQuiz(quizId, { answers: formattedAnswers });
       setScore(response.score);
       setSubmitted(true);
     } catch (error) {
       console.error("Error submitting quiz:", error);
     }
   };
+  
 
   if (loading) return <p className="text-center text-gray-700">Loading quiz...</p>;
   if (!quiz) return <p className="text-center text-red-500">Quiz not found</p>;
