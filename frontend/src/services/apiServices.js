@@ -69,23 +69,13 @@ const quizService = {
   },
 
   getQuizById: async (quizId) => {
-    try {
-      const response = await api.get(`/quiz/single-quiz/${quizId}`);
-      console.log(">>>>>>>>>>>>>>>>>>>>>>id",response.data);
-
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || "Failed to fetch quiz";
-    }
+    const response = await api.get(`/quiz/single-quiz/${quizId}`);
+    return response.data;
   },
 
-  submitQuiz: async (quizId, answers) => {
-    try {
-      const response = await api.post(`/quiz/submit/${quizId}`, { answers });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || "Failed to submit quiz";
-    }
+  submitQuiz: async (quizId, data) => {
+    const response = await api.post(`/quiz/submit/${quizId}`, { ...data });
+    return response.data;
   },
 };
 

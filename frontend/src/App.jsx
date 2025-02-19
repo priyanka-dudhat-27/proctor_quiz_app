@@ -5,7 +5,7 @@ import Register from "./pages/Register";
 import CreateQuiz from "./pages/CreateQuiz";
 import Home from "./pages/Home";
 import ViewScores from "./pages/ViewScores";
-import QuizDetail from "./pages/QuizDetail";
+import QuizDetails from "./pages/QuizDetails";
 
 function App() {
 
@@ -18,7 +18,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
-        <Route path="/quiz/:quizId" element={<QuizDetail />} />
+        <Route path="/specific-quiz/:quizId" element={<QuizDetails/>} />
         <Route path="/view-score" element={<ViewScores />} />
       </Routes>
     </>

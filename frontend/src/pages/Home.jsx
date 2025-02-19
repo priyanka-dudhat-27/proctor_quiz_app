@@ -28,14 +28,20 @@ const Home = () => {
     fetchQuizzes();
   }, []);
 
-  const handleAttendQuiz = (quizId) => {
-    if (user) {
-      navigate(`/quiz/${quizId}`);
-    } else {
-      navigate("/login");
+  const handleAttendQuiz = async (quizId) => {
+    try {
+      const quiz = await quizService.getQuizById(quizId);
+      console.log("Quiz Details:", quiz);
+      if (user) {
+      navigate(`/specific-quiz/${quizId}`);
+        } else {
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error("Error fetching quiz details:", error);
     }
-  };
 
+  };
   return (
     <div className="min-h-screen bg-gray-100 p-6 flex flex-col items-center">
       <h2 className="text-3xl font-bold text-gray-800 mb-8">Available Quizzes</h2>
