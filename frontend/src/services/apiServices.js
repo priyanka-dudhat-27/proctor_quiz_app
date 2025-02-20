@@ -86,6 +86,15 @@ const quizService = {
       throw error.response?.data || "Failed to fetch scores";
     }
   },
+
+  deleteScore: async (scoreId) => {
+    try {
+      const response = await api.delete(`/quiz/admin/scores/${scoreId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || "Failed to delete score";
+    }
+  },
 };
 
 export { authService, quizService };

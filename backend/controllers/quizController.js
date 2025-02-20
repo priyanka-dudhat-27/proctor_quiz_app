@@ -130,3 +130,23 @@ export const getAllScores = async (req, res, next) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+export const deleteScore = async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const scoreId = req.params.id;
+    const deletedScore = await Attempt.findByIdAndDelete(scoreId);
+
+    if (!deletedScore) {
+      return res.status(404).json({ message: "Score not found" });
+    }
+
+    res.json({ message: "Score deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
