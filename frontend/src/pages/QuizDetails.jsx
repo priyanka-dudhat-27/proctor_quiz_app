@@ -4,15 +4,12 @@ import { AuthContext } from "../context/AuthContext";
 import { quizService } from "../services/apiServices";
 import CustomButton from "../components/CustomButton";
 import { motion } from "framer-motion";
-import { io } from "socket.io-client";
 
 const QuizDetails = () => {
   const { quizId } = useParams();
   const { user } = useContext(AuthContext);
   const navigate = useNavigate();
   const quizContainerRef = useRef(null);
-  const videoRef = useRef(null);
-  const socketRef = useRef(null);
 
   const [quiz, setQuiz] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -24,22 +21,6 @@ const QuizDetails = () => {
   const [terminated, setTerminated] = useState(false);
   const [started, setStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
-  const [stream, setStream] = useState(null);
-
-  useEffect(() => {
-    // Connect to WebSocket server
-    socketRef.current = io("http://localhost:5000");
-
-    // Cleanup on unmount
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-      }
-    };
-  }, []);
 
   useEffect(() => {
     const fetchQuizDetails = async () => {
@@ -79,20 +60,6 @@ const QuizDetails = () => {
   }, [warnings]);
 
   useEffect(() => {
-    const handleFullScreenChange = () => {
-      if (!document.fullscreenElement) {
-        setWarnings((prevWarnings) => prevWarnings + 1);
-      }
-    };
-
-    document.addEventListener("fullscreenchange", handleFullScreenChange);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", handleFullScreenChange);
-    };
-  }, []);
-
-  useEffect(() => {
     let timer;
     if (started && timeLeft > 0 && !submitted) {
       timer = setInterval(() => {
@@ -119,74 +86,8 @@ const QuizDetails = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const requestFullScreen = () => {
-    if (quizContainerRef.current) {
-      if (quizContainerRef.current.requestFullscreen) {
-        quizContainerRef.current.requestFullscreen();
-      } else if (quizContainerRef.current.mozRequestFullScreen) { // Firefox
-        quizContainerRef.current.mozRequestFullScreen();
-      } else if (quizContainerRef.current.webkitRequestFullscreen) { // Chrome, Safari, Opera
-        quizContainerRef.current.webkitRequestFullscreen();
-      } else if (quizContainerRef.current.msRequestFullscreen) { // IE/Edge
-        quizContainerRef.current.msRequestFullscreen();
-      }
-    } else {
-      console.error("quizContainerRef is null. Fullscreen mode cannot be activated.");
-    }
-  };
-
-  const startWebcam = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          width: 320,
-          height: 240,
-          frameRate: { ideal: 10, max: 15 }
-        },
-        audio: false 
-      });
-      setStream(mediaStream);
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-
-      // Start sending video frames to server
-      const canvas = document.createElement('canvas');
-      canvas.width = 320;
-      canvas.height = 240;
-      const ctx = canvas.getContext('2d');
-      
-      const sendFrame = () => {
-        if (videoRef.current && socketRef.current) {
-          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-          const frame = canvas.toDataURL('image/jpeg', 0.5);
-          socketRef.current.emit('video-frame', {
-            userId: user.id,
-            userName: user.name,
-            quizId: quizId,
-            frame
-          });
-        }
-      };
-
-      // Send frames every 1 second
-      const frameInterval = setInterval(sendFrame, 1000);
-      return () => clearInterval(frameInterval);
-    } catch (error) {
-      console.error("Error accessing webcam:", error);
-      setTerminated(true);
-    }
-  };
-
-  const handleStartQuiz = async () => {
-    try {
-      await startWebcam();
-      await requestFullScreen();
-      setStarted(true);
-    } catch (error) {
-      console.error("Error starting quiz:", error);
-    }
+  const handleStartQuiz = () => {
+    setStarted(true);
   };
 
   const handleOptionSelect = (questionIndex, optionIndex) => {
@@ -235,12 +136,6 @@ const QuizDetails = () => {
                       <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                      <span>Exiting full-screen mode</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
                       <span>Switching browser tabs</span>
                     </li>
                     <li className="flex items-start">
@@ -248,12 +143,6 @@ const QuizDetails = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       <span>Receiving three warnings</span>
-                    </li>
-                    <li className="flex items-start">
-                      <svg className="h-6 w-6 text-red-500 mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      <span>Webcam access is required to take the quiz</span>
                     </li>
                   </ul>
                 </div>
@@ -296,12 +185,6 @@ const QuizDetails = () => {
                         <span>Ensure you are in a quiet environment with no distractions</span>
                       </li>
                       <li className="flex items-start">
-                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>The quiz will be conducted in full-screen mode</span>
-                      </li>
-                      <li className="flex items-start">
                         <svg className="h-6 w-6 text-yellow-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
@@ -312,12 +195,6 @@ const QuizDetails = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>Make sure your internet connection is stable</span>
-                      </li>
-                      <li className="flex items-start">
-                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Webcam access is required to take the quiz</span>
                       </li>
                     </ul>
                   </div>
@@ -354,7 +231,7 @@ const QuizDetails = () => {
     <motion.div ref={(el) => (quizContainerRef.current = el)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="min-h-screen bg-white p-6 flex flex-col items-center relative">
       {/* Background GIF */}
       <motion.img
-        src="https://content.presentermedia.com/content/clipart/00015000/15111/student_thinking_300_nwm.jpg" // Replace with your GIF URL
+        src="https://content.presentermedia.com/content/clipart/00015000/15111/student_thinking_300_nwm.jpg"
         alt="Background Animation"
         className="absolute inset-0 w-full h-full object-cover opacity-20"
         initial={{ opacity: 0 }}
@@ -369,7 +246,7 @@ const QuizDetails = () => {
       {warnings > 0 && (
         <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4 w-full max-w-2xl">
           <p className="font-bold">Warning</p>
-          <p>You have switched tabs or exited full-screen mode. This is warning {warnings} of 3.</p>
+          <p>You have switched tabs. This is warning {warnings} of 3.</p>
         </div>
       )}
 
@@ -415,13 +292,6 @@ const QuizDetails = () => {
           </div>
         </motion.div>
       )}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="fixed top-4 right-4 w-[160px] h-[120px] bg-black rounded-lg overflow-hidden shadow-lg"
-      />
     </motion.div>
   );
 };
