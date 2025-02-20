@@ -8,7 +8,7 @@ router.post("/create-quiz", protect, admin, createQuiz);
 
 router.get("/single-quiz/:id", protect, getQuizById);
 
-router.get("/all", protect, getAllQuizzes);
+router.get("/all", getAllQuizzes);
 
 router.post("/submit/:id", protect, submitQuiz);
 
