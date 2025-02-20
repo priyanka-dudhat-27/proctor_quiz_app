@@ -18,7 +18,7 @@ const Header = () => {
                 <>
                   <Link to="/create-quiz" className="hover:underline">Create Quiz</Link>
                   <Link to="/admin/scores" className="hover:underline">View Scores</Link>
-                  <Link to="/proctoring" className="hover:underline">Proctoring</Link>
+                  <Link to="/admin/monitoring" className="hover:underline">Proctoring</Link>
                 </>
               )}
               <button 
@@ -27,7 +27,7 @@ const Header = () => {
               >
                 Logout
               </button>
-            </>
+            </> 
           ) : (
             <>
               <Link to="/login" className="hover:underline">Login</Link>

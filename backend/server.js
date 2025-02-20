@@ -3,6 +3,8 @@ import cors from 'cors';
 import { createServer } from 'http';
 import setupVideoStream from './socket/videoStream.js';
 import quizRoutes from './routes/quizRoutes.js';
+const activityRoutes = require('./routes/activityRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 const httpServer = createServer(app);
@@ -16,6 +18,8 @@ app.use(express.json());
 
 // Routes
 app.use('/api/quiz', quizRoutes);
+app.use('/api/activity', activityRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 const PORT = process.env.PORT || 5000;
 

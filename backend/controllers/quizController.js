@@ -1,6 +1,39 @@
 import Quiz from "../models/Quiz.js";
 import Attempt from "../models/Attempt.js";
 
+const activeStreams = new Map();
+
+const addStream = (userId, streamId) => {
+  activeStreams.set(userId, {
+    streamId,
+    status: 'active',
+    lastPing: Date.now()
+  });
+};
+
+const removeStream = (userId) => {
+  activeStreams.delete(userId);
+};
+
+const getActiveStreams = () => {
+  return Array.from(activeStreams.entries()).map(([userId, data]) => ({
+    userId,
+    ...data
+  }));
+};
+
+const updateStreamStatus = (userId, status) => {
+  if (activeStreams.has(userId)) {
+    activeStreams.get(userId).status = status;
+  }
+};
+
+const pingStream = (userId) => {
+  if (activeStreams.has(userId)) {
+    activeStreams.get(userId).lastPing = Date.now();
+  }
+};
+
 export const createQuiz = async (req, res) => {
   if (req.user.role !== "admin") {
     return res.status(403).json({ message: "Access Denied" });
@@ -148,5 +181,18 @@ export const deleteScore = async (req, res) => {
     res.json({ message: "Score deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const getActiveUsers = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access Denied' });
+    }
+
+    const activeUsers = getActiveStreams();
+    res.status(200).json(activeUsers);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

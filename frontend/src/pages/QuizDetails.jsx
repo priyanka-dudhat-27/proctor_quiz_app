@@ -21,6 +21,8 @@ const QuizDetails = () => {
   const [terminated, setTerminated] = useState(false);
   const [started, setStarted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [cameraStream, setCameraStream] = useState(null);
+  const [cameraError, setCameraError] = useState(null);
 
   useEffect(() => {
     const fetchQuizDetails = async () => {
@@ -79,6 +81,39 @@ const QuizDetails = () => {
     };
   }, [started, timeLeft, submitted]);
 
+  useEffect(() => {
+    const initCamera = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false
+        });
+        setCameraStream(stream);
+        
+        // Start streaming to signaling server
+        const peerConnection = new RTCPeerConnection();
+        stream.getTracks().forEach(track => {
+          peerConnection.addTrack(track, stream);
+        });
+        
+        // Handle signaling server connection
+        // (Implementation details will be added in backend changes)
+      } catch (error) {
+        setCameraError('Camera access denied');
+      }
+    };
+
+    if (started) {
+      initCamera();
+    }
+
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [started]);
+
   const formatTime = (seconds) => {
     if (!seconds && seconds !== 0) return "--:--";
     const minutes = Math.floor(seconds / 60);
@@ -86,8 +121,14 @@ const QuizDetails = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const handleStartQuiz = () => {
-    setStarted(true);
+  const handleStartQuiz = async () => {
+    try {
+      await document.documentElement.requestFullscreen();
+      setStarted(true);
+    } catch (error) {
+      alert('Please enable fullscreen mode to start the quiz');
+      return;
+    }
   };
 
   const handleOptionSelect = (questionIndex, optionIndex) => {
@@ -108,6 +149,31 @@ const QuizDetails = () => {
       console.error("Error submitting quiz:", error);
     }
   };
+
+  const handleFullscreen = () => {
+    const element = document.documentElement;
+    if (!document.fullscreenElement) {
+      element.requestFullscreen().catch(err => {
+        console.error('Error attempting to enable fullscreen:', err);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        // Handle exiting fullscreen
+        setTerminated(true);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    };
+  }, []);
 
   if (loading) return <p className="text-center text-gray-700">Loading quiz...</p>;
   if (!quiz) return <p className="text-center text-red-500">Quiz not found</p>;
@@ -257,6 +323,31 @@ const QuizDetails = () => {
           </span>
         </div>
       )}
+
+      {cameraStream && (
+        <div className="fixed bottom-4 right-4 w-48 h-32 rounded-lg overflow-hidden shadow-lg">
+          <video
+            autoPlay
+            muted
+            ref={video => {
+              if (video) video.srcObject = cameraStream;
+            }}
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+      {cameraError && (
+        <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded">
+          {cameraError}
+        </div>
+      )}
+
+      <button
+        onClick={handleFullscreen}
+        className="fixed bottom-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+      >
+        {document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+      </button>
 
       {submitted ? (
         <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-lg shadow-lg text-center z-10">

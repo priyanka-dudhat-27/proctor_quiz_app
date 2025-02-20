@@ -8,6 +8,7 @@ import QuizDetails from "./pages/QuizDetails";
 import { AuthContext } from "./context/AuthContext";
 import { useContext } from "react";
 import AdminViewScores from "./pages/AdminViewScores";
+import AdminMonitoring from './pages/AdminMonitoring';
 
 function App() {
   const { user } = useContext(AuthContext);
@@ -23,6 +24,9 @@ function App() {
         <Route path="/create-quiz" element={<CreateQuiz />} />
         <Route path="/specific-quiz/:quizId" element={<QuizDetails/>} />
         <Route path="/admin/scores" element={<AdminViewScores />} /> 
+        <Route path="/admin/monitoring" element={
+            <AdminMonitoring />
+        } /> 
 
       </Routes>
     </>
