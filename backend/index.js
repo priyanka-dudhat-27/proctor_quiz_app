@@ -124,7 +124,6 @@ setInterval(() => {
 }, 60000);
 
 // Broadcast Active Users
-// Broadcast Active Users
 const broadcastActiveUsers = _.debounce(() => {
     const usersList = Array.from(activeUsers.values()).map(({ userId, name }) => ({
         userId,
