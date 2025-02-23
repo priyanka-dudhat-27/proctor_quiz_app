@@ -11,6 +11,8 @@ import { createServer } from "http";
 import { handleCameraStream } from "./controllers/proctoringController.js";
 import { WebSocketServer,WebSocket } from "ws"; // ✅ WebSocket Server Import
 import jwt from "jsonwebtoken";
+import _ from "lodash";
+
 
 dotenv.config();
 connectDB();
@@ -122,25 +124,36 @@ setInterval(() => {
 }, 60000);
 
 // Broadcast Active Users
-function broadcastActiveUsers() {
-  const usersList = Array.from(activeUsers.values()).map(
-    ({ userId, name, lastActive }) => ({
-      userId,
-      name,
-      lastActive,
-    })
-  );
+// Broadcast Active Users
+const broadcastActiveUsers = _.debounce(() => {
+    const usersList = Array.from(activeUsers.values()).map(({ userId, name }) => ({
+        userId,
+        name
+    }));
 
-  const message = JSON.stringify({
-    type: "activeUsers",
-    users: usersList,
-  });
+    const message = JSON.stringify({ type: "activeUsers", users: usersList });
 
-  for (const user of activeUsers.values()) {
-    if (user.ws.readyState === WebSocket.OPEN) {
-      user.ws.send(message);
+    for (const user of activeUsers.values()) {
+        if (user.ws.readyState === WebSocket.OPEN) {
+            user.ws.send(message);
+        }
     }
-  }
+}, 2000); // Send updates every 2 seconds
+
+
+
+const message = JSON.stringify({
+    type: "activeUsers",
+    users: Array.from(activeUsers.values()).map(({ userId, name }) => ({
+        userId,
+        name
+    }))
+});
+
+for (const user of activeUsers.values()) {
+    if (user.ws.readyState === WebSocket.OPEN) {
+        user.ws.send(message);
+    }
 }
 
 // Start Server
