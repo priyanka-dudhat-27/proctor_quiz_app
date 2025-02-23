@@ -78,56 +78,70 @@ const AdminMonitoring = () => {
 
   const setupPeerConnection = useCallback(async (userId) => {
     if (peerConnections.has(userId)) return peerConnections.get(userId);
-
+  
     console.log(`🔗 Setting up PeerConnection for user: ${userId}`);
-
+  
     const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     const pc = new RTCPeerConnection(configuration);
-
+  
+    // 🔹 Get user media (video/audio)
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      stream.getTracks().forEach(track => pc.addTrack(track, stream)); // Add tracks to connection
+      console.log(`🎥 Media stream added for user ${userId}`);
+    } catch (error) {
+      console.error(`❌ Error accessing camera/mic for user ${userId}:`, error);
+    }
+  
+    // 🔹 Receive and display remote video
     pc.ontrack = (event) => {
-        console.log(`📹 Receiving video stream from user: ${userId}`);
+      console.log(`📹 Receiving video stream from user: ${userId}`);
+      setTimeout(() => {  // Ensure video element is ready
         const videoElement = document.getElementById(`video-${userId}`);
         if (videoElement && event.streams[0]) {
-            videoElement.srcObject = event.streams[0];
+          videoElement.srcObject = event.streams[0];
+          console.log(`🎥 Video stream set for user ${userId}`);
         }
+      }, 1000); // Delay to ensure UI is rendered
     };
-
+    
+  
     pc.onicecandidate = (event) => {
-        if (event.candidate) {
-            if (pc.remoteDescription) { // Ensure remote description is set before sending ICE candidates
-                console.log(`🧊 Sending ICE Candidate for user: ${userId}`);
-                wsRef.current?.send(JSON.stringify({
-                    type: 'candidate',
-                    candidate: event.candidate,
-                    targetUserId: userId
-                }));
-            } else {
-                console.warn(`⚠️ ICE Candidate skipped for user ${userId}: Remote description not set yet.`);
-            }
+      if (event.candidate) {
+        if (pc.remoteDescription) {
+          console.log(`🧊 Sending ICE Candidate for user: ${userId}`);
+          wsRef.current?.send(JSON.stringify({
+            type: 'candidate',
+            candidate: event.candidate,
+            targetUserId: userId
+          }));
+        } else {
+          console.warn(`⚠️ ICE Candidate skipped for user ${userId}: Remote description not set yet.`);
         }
+      }
     };
-
+  
     pc.onconnectionstatechange = () => {
-        console.log(`🔄 PeerConnection state for user ${userId}: ${pc.connectionState}`);
-        if (pc.connectionState === "failed" || pc.connectionState === "closed") {
-            console.warn(`❌ Closing PeerConnection for user: ${userId}`);
-            removePeerConnection(userId);
-        }
+      console.log(`🔄 PeerConnection state for user ${userId}: ${pc.connectionState}`);
+      if (pc.connectionState === "failed" || pc.connectionState === "closed") {
+        console.warn(`❌ Closing PeerConnection for user: ${userId}`);
+        removePeerConnection(userId);
+      }
     };
-
+  
     pc.onerror = (error) => {
-        console.error(`❌ Error in PeerConnection for user ${userId}:`, error);
+      console.error(`❌ Error in PeerConnection for user ${userId}:`, error);
     };
-
+  
     setPeerConnections((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(userId, pc);
-        return newMap;
+      const newMap = new Map(prev);
+      newMap.set(userId, pc);
+      return newMap;
     });
-
+  
     return pc;
-}, [peerConnections]);
-
+  }, [peerConnections]);
+  
   const removePeerConnection = (userId) => {
     const pc = peerConnections.get(userId);
     if (pc) {
@@ -162,6 +176,7 @@ const AdminMonitoring = () => {
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="font-semibold">{user.userId}</h3>
+                  <h3 className="font-semibold">{user.name}</h3>
                   <p className="text-sm text-gray-600">Status: {user.status || 'Active'}</p>
                 </div>
                 <button
