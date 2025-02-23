@@ -70,16 +70,21 @@ wss.on("connection", async (ws, req) => {
 
     // Handle incoming messages
     ws.on("message", (message) => {
-      try {
-        const data = JSON.parse(message);
-        if (data.type === "ping") {
-          activeUsers.get(userId).lastActive = Date.now();
+        try {
+          const data = JSON.parse(message);
+          if (data.type === "ping") {
+            const user = activeUsers.get(userId);
+            if (user) {
+              user.lastActive = Date.now();
+            } else {
+              console.warn(`⚠️ User ${userId} not found in activeUsers map.`);
+            }
+          }
+        } catch (err) {
+          console.error("❌ Error parsing WebSocket message:", err);
         }
-      } catch (err) {
-        console.error("❌ Error parsing WebSocket message:", err);
-      }
-    });
-
+      });
+      
     // Send initial active users list
     broadcastActiveUsers();
   } catch (error) {
@@ -125,7 +130,7 @@ function broadcastActiveUsers() {
 }
 
 // Start Server
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8081;
 server.listen(PORT, () =>
   console.log(
     `🚀 Server running on port ${PORT}, WebSocket on ws://localhost:${PORT}/ws`

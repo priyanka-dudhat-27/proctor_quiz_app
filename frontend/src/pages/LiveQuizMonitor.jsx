@@ -10,7 +10,7 @@ const LiveQuizMonitor = () => {
   useEffect(() => {
     if (!user || user.role !== 'admin') return;
 
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io('http://localhost:8081');
     setSocket(newSocket);
 
     newSocket.on('video-frame', ({ userId, userName, quizId, frame }) => {
