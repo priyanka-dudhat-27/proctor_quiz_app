@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import proctoringRoutes from "./routes/proctoringRoutes.js";
+import activityRoutes from "./routes/activityRoutes.js";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { handleCameraStream } from "./controllers/proctoringController.js";
@@ -19,6 +20,7 @@ app.use(cors());
 app.use("/api/auth", authRoutes);
 app.use("/api/quiz", quizRoutes);
 app.use("/api/proctoring", proctoringRoutes);
+app.use("/api/activity", activityRoutes);
 
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });

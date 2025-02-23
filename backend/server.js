@@ -5,12 +5,15 @@ import setupVideoStream from './socket/videoStream.js';
 import quizRoutes from './routes/quizRoutes.js';
 const activityRoutes = require('./routes/activityRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const setupWebSocketServer = require('./websocket/activityWebSocket');
 
 const app = express();
 const httpServer = createServer(app);
 
-// Setup WebSocket server
+// Setup WebSocket servers
 const io = setupVideoStream(httpServer);
+const webSocketServer = setupWebSocketServer(httpServer);
+app.set('webSocketServer', webSocketServer);
 
 // Middleware
 app.use(cors());

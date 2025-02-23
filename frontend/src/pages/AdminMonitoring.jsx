@@ -14,12 +14,83 @@ const AdminMonitoring = () => {
   const [ws, setWs] = useState(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080');
+    const token = localStorage.getItem('token');
+    const ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`);
     setWs(ws);
 
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       switch (message.type) {
+        case 'activeUsers':
+          setActiveUsers(message.users);
+          break;// Add these state variables at the top
+          const [peerConnections, setPeerConnections] = useState(new Map());
+          const [localStream, setLocalStream] = useState(null);
+          
+          // Add this function to handle WebRTC connection
+          const setupPeerConnection = async (userId) => {
+            const configuration = {
+              iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }
+              ]
+            };
+            
+            const pc = new RTCPeerConnection(configuration);
+            
+            pc.ontrack = (event) => {
+              const videoElement = document.getElementById(`video-${userId}`);
+              if (videoElement && event.streams[0]) {
+                videoElement.srcObject = event.streams[0];
+              }
+            };
+          
+            // Handle ICE candidates
+            pc.onicecandidate = (event) => {
+              if (event.candidate) {
+                ws.send(JSON.stringify({
+                  type: 'candidate',
+                  candidate: event.candidate,
+                  targetUserId: userId
+                }));
+              }
+            };
+          
+            peerConnections.set(userId, pc);
+            setPeerConnections(new Map(peerConnections));
+            
+            return pc;
+          };
+          
+          // Update the WebSocket message handler
+          ws.onmessage = async (event) => {
+            const message = JSON.parse(event.data);
+            switch (message.type) {
+              case 'offer':
+                const pc = await setupPeerConnection(message.senderUserId);
+                await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                ws.send(JSON.stringify({
+                  type: 'answer',
+                  answer,
+                  targetUserId: message.senderUserId
+                }));
+                break;
+              case 'answer':
+                const peerConnection = peerConnections.get(message.senderUserId);
+                if (peerConnection) {
+                  await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+                }
+                break;
+              case 'candidate':
+                const pc2 = peerConnections.get(message.senderUserId);
+                if (pc2) {
+                  await pc2.addIceCandidate(new RTCIceCandidate(message.candidate));
+                }
+                break;
+              // ... existing cases
+            }
+          };
         case 'userConnected':
           setActiveStreams(prev => [...prev, {
             userId: message.userId,
@@ -35,7 +106,15 @@ const AdminMonitoring = () => {
       }
     };
 
+    // Send ping every 30 seconds to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+
     return () => {
+      clearInterval(pingInterval);
       ws.close();
     };
   }, []);
@@ -44,23 +123,19 @@ const AdminMonitoring = () => {
     const fetchActiveUsers = async () => {
       try {
         const response = await quizService.getActiveUsers();
-        setActiveUsers(response.data);
+        setActiveUsers(response.data.users);
       } catch (error) {
         console.error('Error fetching active users:', error);
       }
     };
 
-    const interval = setInterval(() => {
-      fetchActiveUsers();
-    }, 5000);
+    // Initial fetch
     fetchActiveUsers();
-
-    return () => clearInterval(interval);
   }, []);
 
-  const filteredUsers = activeUsers.filter(user =>
-    user.userId.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = activeUsers?.filter(user =>
+    user?.userId?.toLowerCase().includes(searchQuery?.toLowerCase() || '')
+  ) || [];
 
   const handleUserClick = (user) => {
     setSelectedUser(user);
@@ -102,76 +177,96 @@ const AdminMonitoring = () => {
   };
 
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Live Camera Monitoring</h1>
-      <div className="mb-6 flex items-center gap-4">
+    <div className="container mx-auto p-4">
+      <div className="mb-4">
         <input
           type="text"
           placeholder="Search users..."
+          className="w-full p-2 border rounded-lg"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-grow p-2 border rounded-lg"
         />
-        <button
-          onClick={() => setShowRecordModal(true)}
-          className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
-        >
-          Start Recording
-        </button>
       </div>
+
+      {/* Multi-camera View */}
       {multiView.length > 0 && (
-        <div className="mb-6">
-          <h2 className="text-xl font-bold mb-4">Multi-Camera View</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {multiView.map(userId => (
-              <div key={userId} className="relative aspect-video bg-gray-200 rounded-lg overflow-hidden">
-                <video
-                  autoPlay
-                  muted
-                  className="w-full h-full object-cover"
-                  src={`ws://localhost:8080/stream?userId=${userId}`}
-                />
-                <button
-                  onClick={() => setMultiView(multiView.filter(id => id !== userId))}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center hover:bg-red-600"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">Multi-camera View</h2>
+            <button
+              onClick={() => setMultiView([])}
+              className="bg-red-500 text-white px-3 py-1 rounded-lg hover:bg-red-600"
+            >
+              Clear All
+            </button>
+          </div>
+          <div className={`grid gap-4 ${
+            multiView.length === 1 ? 'grid-cols-1' :
+            multiView.length === 2 ? 'grid-cols-2' :
+            multiView.length === 3 ? 'grid-cols-3' :
+            'grid-cols-2 md:grid-cols-4'
+          }`}>
+            {multiView.map((userId) => {
+              const user = activeUsers?.find(u => u.userId === userId);
+              return (
+                <div key={userId} className="relative bg-gray-100 rounded-lg p-4">
+                  <button
+                    onClick={() => setMultiView(prev => prev.filter(id => id !== userId))}
+                    className="absolute top-2 right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center hover:bg-red-600"
+                  >
+                    ×
+                  </button>
+                  <div className="aspect-video bg-gray-800 rounded-lg mb-2">
+                    {/* Video stream would go here */}
+                    <div className="w-full h-full flex items-center justify-center text-white">
+                      Stream: {user?.userId}
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium">{user?.userId}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activeStreams.map(stream => (
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {filteredUsers.map((user) => (
           <motion.div
-            key={stream.userId}
+            key={user.userId}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-lg overflow-hidden"
+            className="bg-white p-4 rounded-lg shadow-md"
           >
-            <div className="relative aspect-video bg-gray-200">
-              <video
-                autoPlay
-                muted
-                className="w-full h-full object-cover"
-                src={`ws://localhost:8080/stream?userId=${stream.userId}`}
-              />
-              <div className="absolute bottom-2 right-2 px-2 py-1 rounded text-sm"
-                style={{ backgroundColor: stream.status === 'active' ? '#10B981' : '#EF4444' }}
-              >
-                {stream.status}
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="font-semibold">{user.userId}</h3>
+                <p className="text-sm text-gray-600">Status: {user.status || 'Active'}</p>
               </div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-semibold">User ID: {stream.userId}</h3>
-              <p className="text-sm text-gray-600">
-                Last activity: {new Date(stream.lastPing).toLocaleTimeString()}
-              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleAddToMultiView(user.userId)}
+                  disabled={multiView.includes(user.userId)}
+                  className={`px-3 py-1 rounded-lg text-sm ${
+                    multiView.includes(user.userId)
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
+                >
+                  {multiView.includes(user.userId) ? 'Added' : 'Add to View'}
+                </button>
+                <button
+                  onClick={() => handleUserClick(user)}
+                  className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600"
+                >
+                  Details
+                </button>
+              </div>
             </div>
           </motion.div>
         ))}
       </div>
+
       {selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full">

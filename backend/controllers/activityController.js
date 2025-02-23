@@ -1,4 +1,4 @@
-const ActivityLog = require('../models/ActivityLog');
+import ActivityLog from '../models/ActivityLog.js';
 
 const logActivity = async (userId, description) => {
   try {
@@ -28,7 +28,4 @@ const getActivityLogs = async (req, res) => {
   }
 };
 
-module.exports = {
-  logActivity,
-  getActivityLogs
-};
+export { logActivity, getActivityLogs };

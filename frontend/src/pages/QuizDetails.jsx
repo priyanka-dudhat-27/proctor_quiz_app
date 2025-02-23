@@ -141,7 +141,8 @@ const QuizDetails = () => {
       return;
     }
     try {
-      const formattedAnswers = Object.values(answers); // Convert object to array
+      // Make sure answers are numbers (indices)
+      const formattedAnswers = Object.values(answers).map(answer => Number(answer));
       const response = await quizService.submitQuiz(quizId, { answers: formattedAnswers });
       setScore(response.score);
       setSubmitted(true);
@@ -260,6 +261,12 @@ const QuizDetails = () => {
                         <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
+                        <span>Full Screen mode compulsary during Quiz attempt</span>
+                      </li>
+                      <li className="flex items-start">
+                        <svg className="h-6 w-6 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         <span>Make sure your internet connection is stable</span>
                       </li>
                     </ul>
@@ -271,6 +278,7 @@ const QuizDetails = () => {
                       <li>Quiz duration: {quiz.duration} minutes</li>
                       <li>Auto-submission when time expires</li>
                       <li>No tab switching allowed</li>
+                      <li>Exit full Screen mode cuses Quiz termination</li>
                     </ul>
                   </div>
                 </div>
@@ -342,12 +350,12 @@ const QuizDetails = () => {
         </div>
       )}
 
-      <button
+      {/* <button
         onClick={handleFullscreen}
         className="fixed bottom-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
       >
         {document.fullscreenElement ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-      </button>
+      </button> */}
 
       {submitted ? (
         <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="bg-white p-6 rounded-lg shadow-lg text-center z-10">

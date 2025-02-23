@@ -95,6 +95,15 @@ const quizService = {
       throw error.response?.data || "Failed to delete score";
     }
   },
+
+  getActiveUsers: async () => {
+    try {
+      const response = await api.get("/activity/active-users");
+      return response;
+    } catch (error) {
+      throw error.response?.data || "Failed to fetch active users";
+    }
+  },
 };
 
 export { authService, quizService };

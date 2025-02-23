@@ -95,12 +95,13 @@ export const submitQuiz = async (req, res, next) => {
 
     let score = 0;
     const questionResults = quiz.questions.map((question, index) => {
-      const isCorrect = question.correctAnswer === answers[index];
+      // Compare with correctOption instead of correctAnswer
+      const isCorrect = question.correctOption === answers[index];
       if (isCorrect) score++;
       return {
         questionNumber: index + 1,
         userAnswer: answers[index],
-        correctAnswer: question.correctAnswer,
+        correctAnswer: question.correctOption,
         isCorrect
       };
     });
@@ -130,10 +131,10 @@ export const submitQuiz = async (req, res, next) => {
       questionResults
     });
   } catch (error) {
+    console.error('Quiz submission error:', error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
-
 export const getAllScores = async (req, res, next) => {
   try {
     // Check if the user is an admin
