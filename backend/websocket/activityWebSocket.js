@@ -1,16 +1,15 @@
-const WebSocket = require('ws');
-const jwt = require('jsonwebtoken');
+import { WebSocketServer } from 'ws';
+import jwt from 'jsonwebtoken';
 
 const activeUsers = new Map();
 
-function setupWebSocketServer(server) {
-    const wss = new WebSocket.Server({ server, path: '/ws' });
+export function setupWebSocketServer(server) {
+    const wss = new WebSocketServer({ server, path: "/ws" });
 
     wss.on('connection', async (ws, req) => {
         try {
-            // Extract token from query parameters
-            const url = new URL(req.url, 'ws://localhost:8080');
-            const token = url.searchParams.get('token');
+            // Extract token from request headers
+            const token = new URL(req.headers.origin + req.url).searchParams.get('token');
 
             if (!token) {
                 ws.close(1008, 'Authentication required');
@@ -29,6 +28,8 @@ function setupWebSocketServer(server) {
                 name: decoded.name
             });
 
+            console.log(`✅ User connected: ${decoded.name}`);
+
             // Handle connection close
             ws.on('close', () => {
                 activeUsers.delete(userId);
@@ -37,16 +38,20 @@ function setupWebSocketServer(server) {
 
             // Handle incoming messages
             ws.on('message', (message) => {
-                const data = JSON.parse(message);
-                if (data.type === 'ping') {
-                    activeUsers.get(userId).lastActive = Date.now();
+                try {
+                    const data = JSON.parse(message);
+                    if (data.type === 'ping') {
+                        activeUsers.get(userId).lastActive = Date.now();
+                    }
+                } catch (err) {
+                    console.error("❌ Error parsing WebSocket message:", err);
                 }
             });
 
             // Send initial active users list
             broadcastActiveUsers();
         } catch (error) {
-            console.error('WebSocket connection error:', error);
+            console.error('❌ WebSocket connection error:', error);
             ws.close(1011, 'Something went wrong');
         }
     });
@@ -76,7 +81,7 @@ function setupWebSocketServer(server) {
         });
 
         for (const user of activeUsers.values()) {
-            if (user.ws.readyState === WebSocket.OPEN) {
+            if (user.ws.readyState === ws.OPEN) {
                 user.ws.send(message);
             }
         }
@@ -92,5 +97,3 @@ function setupWebSocketServer(server) {
         }
     };
 }
-
-module.exports = setupWebSocketServer;
