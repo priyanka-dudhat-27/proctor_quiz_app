@@ -1,82 +1,85 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { quizService } from '../services/apiServices';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion } from 'framer-motion';
 
 const AdminMonitoring = () => {
-  const [activeStreams, setActiveStreams] = useState([]);
   const [activeUsers, setActiveUsers] = useState([]);
   const [peerConnections, setPeerConnections] = useState(new Map());
-  const wsRef = useRef(null); // Store WebSocket reference
+  const wsRef = useRef(null);
+  const reconnectAttempts = useRef(0);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    wsRef.current = new WebSocket(`${protocol}://${window.location.hostname}:8081/ws?token=${token}`);
 
-    const ws = wsRef.current;
+    const connectWebSocket = () => {
+      wsRef.current = new WebSocket(`${protocol}://${window.location.hostname}:8081/ws?token=${token}`);
+      const ws = wsRef.current;
 
-    ws.onopen = () => console.log("✅ WebSocket Connected");
-    ws.onerror = (err) => console.error("❌ WebSocket Error:", err);
-    ws.onclose = (event) => {
-      console.warn("⚠️ WebSocket Closed:", event);
-      setTimeout(() => {
-        console.log("♻️ Reconnecting WebSocket...");
-        wsRef.current = new WebSocket(`${protocol}://${window.location.hostname}:8081/ws?token=${token}`);
-      }, 3000); // Auto-reconnect after 3 seconds
+      ws.onopen = () => {
+        console.log("✅ WebSocket Connected");
+        reconnectAttempts.current = 0; // Reset reconnect attempts
+      };
+
+      ws.onerror = (err) => console.error("❌ WebSocket Error:", err);
+
+      ws.onclose = () => {
+        console.warn("⚠️ WebSocket Disconnected");
+        reconnectAttempts.current++;
+        const delay = Math.min(3000 * reconnectAttempts.current, 30000); // Exponential backoff (max 30s)
+        setTimeout(connectWebSocket, delay);
+      };
+
+      ws.onmessage = async (event) => {
+        const message = JSON.parse(event.data);
+        switch (message.type) {
+          case 'activeUsers':
+            setActiveUsers(message.users || []);
+            break;
+
+          case 'userDisconnected':
+            removePeerConnection(message.userId);
+            setActiveUsers((prev) => prev.filter((user) => user.userId !== message.userId));
+            break;
+
+          case 'offer':
+            const pc = await setupPeerConnection(message.senderUserId);
+            await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            ws.send(JSON.stringify({ type: 'answer', answer, targetUserId: message.senderUserId }));
+            break;
+
+          case 'answer':
+            const peerConnection = peerConnections.get(message.senderUserId);
+            if (peerConnection) {
+              await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
+            }
+            break;
+
+          case 'candidate':
+            const pc2 = peerConnections.get(message.senderUserId);
+            if (pc2) {
+              await pc2.addIceCandidate(new RTCIceCandidate(message.candidate));
+            }
+            break;
+
+          default:
+            break;
+        }
+      };
     };
 
-    ws.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
-      switch (message.type) {
-        case 'activeUsers':
-          setActiveUsers(message.users || []);
-          break;
-
-        case 'userConnected':
-          setActiveStreams((prev) => [...prev, { userId: message.userId, status: 'active' }]);
-          break;
-
-        case 'userDisconnected':
-          setActiveStreams((prev) => prev.filter((stream) => stream.userId !== message.userId));
-          break;
-
-        case 'offer':
-          const pc = await setupPeerConnection(message.senderUserId);
-          await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          ws.send(JSON.stringify({ type: 'answer', answer, targetUserId: message.senderUserId }));
-          break;
-
-        case 'answer':
-          const peerConnection = peerConnections.get(message.senderUserId);
-          if (peerConnection) {
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(message.answer));
-          }
-          break;
-
-        case 'candidate':
-          const pc2 = peerConnections.get(message.senderUserId);
-          if (pc2) {
-            await pc2.addIceCandidate(new RTCIceCandidate(message.candidate));
-          }
-          break;
-
-        default:
-          break;
-      }
-    };
+    connectWebSocket();
 
     return () => {
-      ws.close();
+      wsRef.current?.close();
     };
   }, []);
 
-  const setupPeerConnection = async (userId) => {
-    const configuration = {
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-    };
+  const setupPeerConnection = useCallback(async (userId) => {
+    if (peerConnections.has(userId)) return peerConnections.get(userId);
 
+    const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
     const pc = new RTCPeerConnection(configuration);
 
     pc.ontrack = (event) => {
@@ -92,8 +95,30 @@ const AdminMonitoring = () => {
       }
     };
 
-    setPeerConnections((prev) => new Map(prev).set(userId, pc));
+    setPeerConnections((prev) => {
+      const newMap = new Map(prev);
+      newMap.set(userId, pc);
+      return newMap;
+    });
+
     return pc;
+  }, [peerConnections]);
+
+  const removePeerConnection = (userId) => {
+    const pc = peerConnections.get(userId);
+    if (pc) {
+      pc.close();
+      setPeerConnections((prev) => {
+        const newMap = new Map(prev);
+        newMap.delete(userId);
+        return newMap;
+      });
+    }
+  };
+
+  const requestMonitoring = (userId) => {
+    wsRef.current.send(JSON.stringify({ type: 'startMonitoring', targetUserId: userId }));
+    console.log(`Monitoring requested for ${userId}`);
   };
 
   return (
@@ -114,12 +139,13 @@ const AdminMonitoring = () => {
                   <p className="text-sm text-gray-600">Status: {user.status || 'Active'}</p>
                 </div>
                 <button
-                  onClick={() => console.log(`Monitoring ${user.userId}`)}
+                  onClick={() => requestMonitoring(user.userId)}
                   className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600"
                 >
                   Monitor
                 </button>
               </div>
+              <video id={`video-${user.userId}`} autoPlay playsInline className="w-full h-40 bg-black rounded-lg"></video>
             </motion.div>
           ))
         ) : (

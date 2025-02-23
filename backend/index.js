@@ -39,9 +39,7 @@ const activeUsers = new Map();
 wss.on("connection", async (ws, req) => {
   try {
     // Extract token from URL
-    const token = new URL(req.headers.origin + req.url).searchParams.get(
-      "token"
-    );
+    const token = new URL(req.headers.origin + req.url).searchParams.get("token");
 
     if (!token) {
       ws.close(1008, "Authentication required");
@@ -52,6 +50,7 @@ wss.on("connection", async (ws, req) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const userId = decoded.id;
     console.log("Decoded JWT:", decoded.role);
+
     // Store user connection
     activeUsers.set(userId, {
       ws,
@@ -70,21 +69,26 @@ wss.on("connection", async (ws, req) => {
 
     // Handle incoming messages
     ws.on("message", (message) => {
-        try {
-          const data = JSON.parse(message);
-          if (data.type === "ping") {
-            const user = activeUsers.get(userId);
-            if (user) {
-              user.lastActive = Date.now();
-            } else {
-              console.warn(`⚠️ User ${userId} not found in activeUsers map.`);
-            }
+      try {
+        const data = JSON.parse(message);
+        if (data.type === "ping") {
+          const user = activeUsers.get(userId);
+          if (user) {
+            user.lastActive = Date.now();
+          } else {
+            console.warn(`⚠️ User ${userId} not found in activeUsers map.`);
           }
-        } catch (err) {
-          console.error("❌ Error parsing WebSocket message:", err);
+        } else if (data.type === "monitorRequest") {
+          const targetUser = activeUsers.get(data.targetUserId);
+          if (targetUser && targetUser.ws.readyState === WebSocket.OPEN) {
+            targetUser.ws.send(JSON.stringify({ type: "startStreaming" }));
+          }
         }
-      });
-      
+      } catch (err) {
+        console.error("❌ Error parsing WebSocket message:", err);
+      }
+    });
+
     // Send initial active users list
     broadcastActiveUsers();
   } catch (error) {
