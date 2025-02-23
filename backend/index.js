@@ -9,7 +9,7 @@ import activityRoutes from "./routes/activityRoutes.js";
 import { Server } from "socket.io";
 import { createServer } from "http";
 import { handleCameraStream } from "./controllers/proctoringController.js";
-import { WebSocketServer, WebSocket } from "ws"; // ✅ Import WebSocket (ES Module)
+import { WebSocketServer,WebSocket } from "ws"; // ✅ WebSocket Server Import
 import jwt from "jsonwebtoken";
 
 dotenv.config();
@@ -17,11 +17,7 @@ connectDB();
 
 const app = express();
 app.use(express.json());
-app.use(cors(
-    {
-        origin: "*",
-    }
-));
+app.use(cors({ origin: "*" }));
 
 // Routes
 app.use("/api/auth", authRoutes);
@@ -40,6 +36,19 @@ handleCameraStream(io);
 const wss = new WebSocketServer({ server, path: "/ws" });
 const activeUsers = new Map();
 
+// Function to verify JWT token
+const verifyToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    if (error.name === "TokenExpiredError") {
+      console.warn("⚠️ Token expired.");
+      return null;
+    }
+    throw error;
+  }
+};
+
 wss.on("connection", async (ws, req) => {
   try {
     // Extract token from URL
@@ -50,10 +59,15 @@ wss.on("connection", async (ws, req) => {
       return;
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded = verifyToken(token);
+    
+    if (!decoded) {
+      ws.send(JSON.stringify({ type: "tokenExpired", message: "Your session has expired, please reauthenticate." }));
+      ws.close();
+      return;
+    }
+
     const userId = decoded.id;
-    console.log("Decoded JWT:", decoded.role);
 
     // Store user connection
     activeUsers.set(userId, {
@@ -79,13 +93,6 @@ wss.on("connection", async (ws, req) => {
           const user = activeUsers.get(userId);
           if (user) {
             user.lastActive = Date.now();
-          } else {
-            console.warn(`⚠️ User ${userId} not found in activeUsers map.`);
-          }
-        } else if (data.type === "monitorRequest") {
-          const targetUser = activeUsers.get(data.targetUserId);
-          if (targetUser && targetUser.ws.readyState === WebSocket.OPEN) {
-            targetUser.ws.send(JSON.stringify({ type: "startStreaming" }));
           }
         }
       } catch (err) {
@@ -106,7 +113,7 @@ setInterval(() => {
   const now = Date.now();
   for (const [userId, user] of activeUsers.entries()) {
     if (now - user.lastActive > 60000) {
-      // 1 minute timeout
+      // 1-minute timeout
       user.ws.close();
       activeUsers.delete(userId);
     }
@@ -131,7 +138,6 @@ function broadcastActiveUsers() {
 
   for (const user of activeUsers.values()) {
     if (user.ws.readyState === WebSocket.OPEN) {
-      // ✅ Use WebSocket.OPEN
       user.ws.send(message);
     }
   }
